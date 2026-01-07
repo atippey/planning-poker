@@ -12,6 +12,10 @@ See design/architecture.md for Mermaid diagram of system design.
 - **UI**: React 18 + TypeScript, Material-UI v5, nginx for serving
 - **Deployment**: Kubernetes (containerized, k3d for local dev)
 
+## Development Environment
+- **Python environment**: Use conda environment named `poker` (activate with `conda activate poker`)
+- All dependencies should be installed in this environment
+
 ## Development Standards
 
 ### Python (api/)
