@@ -1,0 +1,59 @@
+# Planning Poker K8s App
+
+## IMPORTANT
+- All code, comments, documentation, and responses MUST be in English only
+- **READ design/architecture.md before implementing** - Contains complete system specification
+
+## Architecture
+See design/architecture.md for Mermaid diagram of system design.
+
+## Stack
+- **API**: FastAPI (Python 3.11+), Redis for session state
+- **UI**: React 18 + TypeScript, Material-UI v5, nginx for serving
+- **Deployment**: Kubernetes (containerized, k3d for local dev)
+
+## Development Standards
+
+### Python (api/)
+- **TDD required**: Write tests first, pytest for all endpoints
+- **Linting**: ruff (or black + isort + flake8)
+- **Structure**: Follow FastAPI best practices, separate routes/models/services
+- **Testing**: 80%+ coverage, mock Redis/external deps
+- **All code comments and docstrings in English**
+
+### TypeScript (ui/)
+- **Scaffold**: Create React App with TypeScript template
+- **UI Library**: Material-UI v5
+- **Linting**: ESLint + Prettier (strict mode)
+- **Testing**: Jest + React Testing Library, unit tests for components
+- **Types**: Strict mode, no `any` unless absolutely necessary
+- **All comments and documentation in English**
+
+## Project Structure
+```
+/api          - FastAPI application
+/ui           - React TypeScript app  
+/helm         - Helm chart for deployment
+/docker       - Dockerfiles (if not in api/ui dirs)
+```
+
+### Testing
+- **Unit tests**: Mock Redis with fakeredis, must run without external dependencies
+- **Fast feedback**: Tests should complete in <5 seconds
+- Optional docker-compose for manual integration testing
+
+## Project Checklist
+Before writing logic, ensure these exist:
+- [ ] api/requirements.txt (fastapi, redis, pytest, fakeredis, ruff)
+- [ ] api/Dockerfile
+- [ ] ui/package.json (react, typescript, material-ui, jest)
+- [ ] ui/tsconfig.json
+- [ ] ui/Dockerfile  
+- [ ] docker-compose.yml (for local Redis)
+- [ ] .gitignore
+
+## Goals
+Build a real-time planning poker app that runs on Kubernetes. Keep it simple enough to demo in a few hours - skip auth, use room codes. Polling over WebSockets if simpler.
+
+## Language Requirement
+**Everything must be in English**: code, comments, commit messages, documentation, variable names, error messages.
