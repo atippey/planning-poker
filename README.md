@@ -9,10 +9,35 @@ See [design/architecture.md](design/architecture.md) for complete system specifi
 ## Tech Stack
 
 - **API**: FastAPI (Python 3.11+), Redis for session state
-- **UI**: React 18 + TypeScript, Material-UI v5
-- **Deployment**: Kubernetes (k3d for local dev)
+- **UI**: React 18 + TypeScript, Material-UI v5, React Router v6
+- **Deployment**: Kubernetes (k3d for local dev), Helm charts, Traefik ingress
 
-## Quick Start (Docker Compose)
+## Quick Start
+
+### Using Make (Recommended)
+
+```bash
+# View all available commands
+make help
+
+# Local development with Docker Compose
+make docker-up           # Start all services
+# Access at http://localhost:3000
+
+# k3d (Kubernetes) deployment
+make k3d-create         # Create k3d cluster
+make k3d-deploy         # Build and deploy application
+# Access at http://localhost:3000
+
+# Testing and linting
+make test               # Run all tests
+make lint               # Run all linters
+
+# Quick redeploy after changes
+make k3d-redeploy       # Rebuild images and restart pods
+```
+
+### Manual Docker Compose
 
 ```bash
 # Start all services
@@ -25,7 +50,47 @@ open http://localhost:3000
 open http://localhost:8000/docs
 ```
 
-## Local Development
+## Development Commands
+
+### Setup
+```bash
+make install            # Install all dependencies (API + UI)
+```
+
+### Testing & Linting
+```bash
+make test              # Run all tests (API + UI)
+make lint              # Run all linters (API + UI)
+make api-test          # Run API tests with pytest
+make api-lint          # Run API linter (ruff)
+make ui-test           # Run UI tests with Jest
+make ui-lint           # Run UI linter (ESLint)
+```
+
+### Docker Compose (Local Development)
+```bash
+make docker-up         # Start all services
+make docker-down       # Stop all services
+make docker-logs       # Show logs
+make docker-rebuild    # Rebuild and restart
+```
+
+### k3d (Kubernetes)
+```bash
+make k3d-create        # Create k3d cluster
+make k3d-deploy        # Build images and deploy
+make k3d-redeploy      # Rebuild and restart deployments
+make k3d-delete        # Delete k3d cluster
+make k3d-logs SERVICE=ui  # Show logs (ui, api, or redis)
+make k3d-status        # Show cluster status
+```
+
+### Cleanup
+```bash
+make clean             # Remove generated files and caches
+```
+
+## Local Development (Manual)
 
 ### API
 
@@ -37,7 +102,7 @@ conda activate poker
 pip install -r requirements.txt
 
 # Run tests
-pytest
+pytest -v
 
 # Run linting
 ruff check .
@@ -67,14 +132,73 @@ npm start
 ## Testing
 
 ### API Tests
-- **Service Layer**: 100% coverage with fakeredis (19 tests)
+- **Service Layer**: 95% coverage with fakeredis (19 tests)
 - **Models**: Pydantic validation with comprehensive error handling
-- **Run**: `pytest tests/test_service.py -v`
+- **Run**: `make api-test` or `pytest tests/test_service.py -v`
 
 ### UI Tests
-- **API Client**: Full mocking and payload validation (6 tests)
-- **Components**: Form validation, error handling, state management (10 tests)
-- **Run**: `npm test -- --watchAll=false`
+- **Components**: Routing, forms, error handling, state management (24 tests)
+- **API Client**: Full mocking and payload validation
+- **Run**: `make ui-test` or `npm test -- --watchAll=false`
+
+## k3d Deployment (Detailed)
+
+### Prerequisites
+- Docker
+- k3d
+- kubectl
+- helm
+
+### Deployment Steps
+
+```bash
+# 1. Create k3d cluster with local registry
+make k3d-create
+
+# 2. Build Docker images and push to local registry
+make k3d-deploy
+
+# 3. Access the application
+open http://localhost:3000
+
+# 4. View logs
+make k3d-logs SERVICE=ui    # UI logs
+make k3d-logs SERVICE=api   # API logs
+
+# 5. Quick redeploy after code changes
+make k3d-redeploy
+
+# 6. Check cluster status
+make k3d-status
+
+# 7. Clean up
+make k3d-delete
+```
+
+### k3d Architecture
+
+The k3d cluster includes:
+- **Local Registry**: `planning-poker-registry:5000` for image storage
+- **Traefik Ingress**: Routes traffic to API and UI services
+- **CORS Middleware**: Configured for localhost development
+- **Services**: Redis (1 pod), API (2 replicas), UI (2 replicas)
+
+Access:
+- UI: `http://localhost:3000`
+- API: `http://localhost:3000/api` (via Traefik)
+
+### Manual k3d Commands
+
+```bash
+# Using the k3d-cluster.sh script directly
+./k3d-cluster.sh create    # Create cluster
+./k3d-cluster.sh build     # Build and push images
+./k3d-cluster.sh deploy    # Deploy with Helm
+./k3d-cluster.sh redeploy  # Rebuild and redeploy
+./k3d-cluster.sh logs ui   # View logs
+./k3d-cluster.sh status    # Show status
+./k3d-cluster.sh delete    # Delete cluster
+```
 
 ## API Endpoints
 
@@ -86,47 +210,41 @@ All endpoints under `/api/v1`:
 - `POST /rooms/{id}/vote` - Submit vote
 - `POST /rooms/{id}/reveal` - Reveal all votes
 - `POST /rooms/{id}/reset` - Start new voting round
+- `GET /api/health` - Health check endpoint
 
-See [API documentation](http://localhost:8000/docs) when running.
+See [API documentation](http://localhost:8000/docs) when running locally.
 
-## Kubernetes Deployment
+## Features
 
-### Prerequisites
-- kubectl
-- k3d or similar local cluster
-- Docker
-
-### Deploy with Helm
-
-```bash
-# Build images
-docker build -t planning-poker-api:latest ./api
-docker build -t planning-poker-ui:latest ./ui
-
-# Install chart
-helm install planning-poker ./helm/planning-poker
-
-# Access application
-kubectl port-forward svc/planning-poker-ui 3000:80
-```
-
-See [helm/planning-poker/README.md](helm/planning-poker/README.md) for detailed deployment instructions.
+- **Room Management**: Create and join planning poker rooms with invitation links
+- **Real-time Updates**: 2-second polling for vote tracking
+- **Fibonacci Voting**: 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89
+- **Statistics**: Automatic calculation of average, median, min, max
+- **Invitation Links**: Share room URLs with copy-to-clipboard
+- **Material-UI Interface**: Clean, responsive design
+- **Room Persistence**: 48-hour room TTL with Redis storage
+- **URL-based Routing**: Direct access to rooms via `/room/{roomId}`
 
 ## Project Structure
 
 ```
-/api                - FastAPI application
-  /models           - Pydantic schemas
-  /routes           - API endpoints
-  /services         - Business logic
-  /db               - Redis client
-  /tests            - Test suites
-/ui                 - React TypeScript app
-  /src/components   - React components
-  /src/services     - API client
-  /src/types        - TypeScript interfaces
-/helm               - Helm charts
-/design             - Architecture documentation
+/api                    - FastAPI application
+  /models               - Pydantic schemas
+  /routes               - API endpoints
+  /services             - Business logic (room service)
+  /db                   - Redis client
+  /tests                - Test suites
+/ui                     - React TypeScript app
+  /src/components       - React components
+  /src/services         - API client
+  /src/types            - TypeScript interfaces
+/helm                   - Helm charts
+  /planning-poker       - Main chart with templates
+/design                 - Architecture documentation
+/k3d-config.yaml        - k3d cluster configuration
+/k3d-cluster.sh         - Cluster management script
+/docker-compose.yml     - Local development setup
+/Makefile               - Development commands
 ```
 
 ## Development Standards
@@ -134,22 +252,86 @@ See [helm/planning-poker/README.md](helm/planning-poker/README.md) for detailed 
 - **Python**: TDD required, 80%+ coverage, ruff linting
 - **TypeScript**: Strict mode, ESLint + Prettier, Jest tests
 - **Language**: All code, comments, and documentation in English
+- **Testing**: Unit tests for service layer and UI components
+- **State Management**: Redis for backend, localStorage for UI session
 
-## Features
+## Configuration
 
-- Create and join planning poker rooms
-- Real-time vote tracking (2-second polling)
-- Fibonacci sequence voting (0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89)
-- Vote reveal with statistics (average, median, min, max)
-- Reset for new voting rounds
-- Material-UI interface
-- Room sharing via room ID
+### Environment Variables
+
+**API (docker-compose):**
+- `REDIS_HOST`: Redis hostname (default: redis)
+- `REDIS_PORT`: Redis port (default: 6379)
+- `REDIS_DB`: Redis database (default: 0)
+
+**UI (docker-compose):**
+- `REACT_APP_API_BASE_URL`: API base URL (default: http://localhost:8000)
+
+**UI (k3d):**
+- `REACT_APP_API_BASE_URL`: Empty (uses window.location.origin via Traefik)
+
+### Helm Values
+
+Key configuration in `helm/planning-poker/values.yaml`:
+- API replicas: 2
+- UI replicas: 2
+- Redis image: redis:7-alpine
+- Ingress: Traefik with CORS middleware
+- Health checks: `/api/health` endpoint
+
+## Troubleshooting
+
+### Docker Compose
+```bash
+# View logs
+make docker-logs
+
+# Rebuild from scratch
+make docker-down
+make clean
+make docker-up
+```
+
+### k3d
+```bash
+# Check pod status
+kubectl get pods
+
+# View pod logs
+make k3d-logs SERVICE=api
+
+# Restart deployments
+kubectl rollout restart deployment/planning-poker-api
+kubectl rollout restart deployment/planning-poker-ui
+
+# Check ingress
+kubectl get ingress
+kubectl describe ingress planning-poker
+
+# Delete and recreate
+make k3d-delete
+make k3d-create
+make k3d-deploy
+```
+
+### Common Issues
+
+**Issue**: UI can't connect to API
+- **Solution**: Check CORS configuration and verify API is accessible
+
+**Issue**: Images not updating in k3d
+- **Solution**: Use `make k3d-redeploy` to rebuild and restart
+
+**Issue**: Tests failing
+- **Solution**: Ensure dependencies are installed with `make install`
 
 ## Notes
 
 - No authentication (demo app)
-- Room data expires after 24 hours
+- Room data expires after 48 hours
 - Polling-based updates (no WebSockets for simplicity)
+- Local k3d cluster uses Traefik for ingress routing
+- Production deployment would require proper domain, TLS, and authentication
 
 ## License
 
