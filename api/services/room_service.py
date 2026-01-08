@@ -1,12 +1,13 @@
 import json
 from datetime import UTC, datetime
-from typing import Union
 from uuid import UUID, uuid4
 
 import redis.asyncio as redis
 
 from models.room import (
     VALID_FIBONACCI,
+    VALID_ORDINAL,
+    Deck,
     Room,
     RoomCompleteState,
     RoomState,
@@ -27,13 +28,14 @@ class RoomService:
         self.redis = redis_client
 
     async def create_room(
-        self, room_name: str, creator_name: str
+        self, room_name: str, creator_name: str, deck: Deck = Deck.FIBONACCI
     ) -> tuple[UUID, str, RoomVotingState]:
         """Create a new planning poker room.
 
         Args:
             room_name: Name of the room
             creator_name: Name of the room creator
+            deck: Deck type for voting
 
         Returns:
             Tuple of (room_id, user_id, room_state)
@@ -45,6 +47,7 @@ class RoomService:
             id=room_id,
             name=room_name,
             state=RoomState.VOTING,
+            deck=deck,
             created_at=datetime.now(UTC),
             users={
                 user_id: User(name=creator_name, vote=None)
@@ -55,7 +58,9 @@ class RoomService:
 
         return room_id, user_id, self._to_voting_state(room)
 
-    async def join_room(self, room_id: UUID, user_name: str) -> tuple[str, Union[RoomVotingState, RoomCompleteState]]:
+    async def join_room(
+        self, room_id: UUID, user_name: str
+    ) -> tuple[str, RoomVotingState | RoomCompleteState]:
         """Join an existing room.
 
         Args:
@@ -84,7 +89,7 @@ class RoomService:
 
     async def get_room(
         self, room_id: UUID, user_id: str
-    ) -> Union[RoomVotingState, RoomCompleteState]:
+    ) -> RoomVotingState | RoomCompleteState:
         """Get current room state.
 
         Args:
@@ -123,14 +128,15 @@ class RoomService:
         Raises:
             ValueError: If invalid vote, room not found, user not in room, or voting not allowed
         """
-        if vote not in VALID_FIBONACCI:
-            raise ValueError(
-                f"Invalid vote value. Must be Fibonacci: {VALID_FIBONACCI}"
-            )
-
         room = await self._get_room_from_redis(room_id)
         if room is None:
             raise ValueError("Room not found")
+
+        allowed_votes = self._allowed_votes_for_deck(room.deck)
+        if vote not in allowed_votes:
+            raise ValueError(
+                f"Invalid vote value for {room.deck}. Allowed: {sorted(allowed_votes)}"
+            )
 
         if user_id not in room.users:
             raise ValueError("User not in room")
@@ -227,6 +233,12 @@ class RoomService:
         data = room.model_dump_json()
         await self.redis.setex(key, self.ROOM_TTL, data)
 
+    def _allowed_votes_for_deck(self, deck: Deck) -> set[int]:
+        """Return allowed votes for the given deck."""
+        if deck == Deck.ORDINAL:
+            return set(VALID_ORDINAL)
+        return set(VALID_FIBONACCI)
+
     def _to_voting_state(self, room: Room) -> RoomVotingState:
         """Convert Room to RoomVotingState (votes hidden).
 
@@ -248,6 +260,7 @@ class RoomService:
             id=room.id,
             name=room.name,
             state=room.state,
+            deck=room.deck,
             created_at=room.created_at,
             users=users_with_status
         )
@@ -273,6 +286,7 @@ class RoomService:
             id=room.id,
             name=room.name,
             state=room.state,
+            deck=room.deck,
             created_at=room.created_at,
             users=users_with_votes
         )

@@ -2,7 +2,8 @@ import axios, { AxiosInstance } from 'axios';
 import type {
   CreateRoomRequest,
   CreateRoomResponse,
-  FibonacciValue,
+  Deck,
+  VoteValue,
   JoinRoomRequest,
   JoinRoomResponse,
   ResetResponse,
@@ -26,10 +27,11 @@ class PlanningPokerApi {
     });
   }
 
-  async createRoom(name: string, creatorName: string): Promise<CreateRoomResponse> {
+  async createRoom(name: string, creatorName: string, deck: Deck = 'fibonacci'): Promise<CreateRoomResponse> {
     const request: CreateRoomRequest = {
       name,
       creator_name: creatorName,
+      deck,
     };
     const response = await this.client.post<CreateRoomResponse>('/rooms', request);
     return response.data;
@@ -53,7 +55,7 @@ class PlanningPokerApi {
     return response.data;
   }
 
-  async submitVote(roomId: string, userId: string, vote: FibonacciValue): Promise<VoteResponse> {
+  async submitVote(roomId: string, userId: string, vote: VoteValue): Promise<VoteResponse> {
     const response = await this.client.post<VoteResponse>(`/rooms/${roomId}/vote`, {
       user_id: userId,
       vote,

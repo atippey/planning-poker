@@ -1,4 +1,3 @@
-from typing import Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,13 +31,14 @@ router = APIRouter(prefix="/rooms", tags=["rooms"])
 )
 async def create_room(
     request: CreateRoomRequest,
-    redis=Depends(get_redis)
+    redis=Depends(get_redis),  # noqa: B008
 ) -> CreateRoomResponse:
     """Create a new planning poker room."""
     service = RoomService(redis)
     room_id, user_id, room = await service.create_room(
         request.name,
-        request.creator_name
+        request.creator_name,
+        request.deck
     )
 
     return CreateRoomResponse(
@@ -58,7 +58,7 @@ async def create_room(
 async def join_room(
     room_id: UUID,
     request: JoinRoomRequest,
-    redis=Depends(get_redis)
+    redis=Depends(get_redis),  # noqa: B008
 ) -> JoinRoomResponse:
     """Join an existing room."""
     service = RoomService(redis)
@@ -71,20 +71,20 @@ async def join_room(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": str(e)}
-            )
+            ) from e
         raise
 
 
 @router.get(
     "/{room_id}",
-    response_model=Union[RoomVotingState, RoomCompleteState],
+    response_model=RoomVotingState | RoomCompleteState,
     responses={404: {"model": ErrorResponse}}
 )
 async def get_room(
     room_id: UUID,
     user_id: str,
-    redis=Depends(get_redis)
-) -> Union[RoomVotingState, RoomCompleteState]:
+    redis=Depends(get_redis),  # noqa: B008
+) -> RoomVotingState | RoomCompleteState:
     """Get current room state."""
     service = RoomService(redis)
 
@@ -94,7 +94,7 @@ async def get_room(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
-        )
+        ) from e
 
 
 @router.post(
@@ -109,7 +109,7 @@ async def get_room(
 async def submit_vote(
     room_id: UUID,
     request: VoteRequest,
-    redis=Depends(get_redis)
+    redis=Depends(get_redis),  # noqa: B008
 ) -> VoteResponse:
     """Submit or update a vote."""
     service = RoomService(redis)
@@ -123,17 +123,17 @@ async def submit_vote(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=error_msg
-            )
+            ) from e
         elif "Cannot vote in complete state" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=error_msg
-            )
+            ) from e
         elif "not found" in error_msg or "not in room" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_msg
-            )
+            ) from e
         raise
 
 
@@ -148,7 +148,7 @@ async def submit_vote(
 async def reveal_votes(
     room_id: UUID,
     request: RevealRequest,
-    redis=Depends(get_redis)
+    redis=Depends(get_redis),  # noqa: B008
 ) -> RevealResponse:
     """Reveal all votes."""
     service = RoomService(redis)
@@ -162,12 +162,12 @@ async def reveal_votes(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=error_msg
-            )
+            ) from e
         elif "not found" in error_msg or "not in room" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_msg
-            )
+            ) from e
         raise
 
 
@@ -179,7 +179,7 @@ async def reveal_votes(
 async def reset_room(
     room_id: UUID,
     request: ResetRequest,
-    redis=Depends(get_redis)
+    redis=Depends(get_redis),  # noqa: B008
 ) -> ResetResponse:
     """Reset room for new voting round."""
     service = RoomService(redis)
@@ -191,4 +191,4 @@ async def reset_room(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
-        )
+        ) from e

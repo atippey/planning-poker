@@ -50,6 +50,7 @@ describe('CreateRoom', () => {
         name: 'Sprint 42',
         state: 'voting',
         created_at: '2026-01-07T10:00:00Z',
+        deck: 'fibonacci',
         users: {},
       },
     });
@@ -66,7 +67,39 @@ describe('CreateRoom', () => {
     fireEvent.click(screen.getByRole('button', { name: /create room/i }));
 
     await waitFor(() => {
-      expect(mockedApi.createRoom).toHaveBeenCalledWith('Sprint 42', 'Alice');
+      expect(mockedApi.createRoom).toHaveBeenCalledWith('Sprint 42', 'Alice', 'fibonacci');
+      expect(mockOnRoomCreated).toHaveBeenCalledWith('room-123', 'user-456', 'Alice');
+    });
+  });
+
+  it('should allow selecting ordinal deck', async () => {
+    mockedApi.createRoom.mockResolvedValue({
+      room_id: 'room-123',
+      user_id: 'user-456',
+      room: {
+        id: 'room-123',
+        name: 'Sprint 42',
+        state: 'voting',
+        created_at: '2026-01-07T10:00:00Z',
+        deck: 'ordinal',
+        users: {},
+      },
+    });
+
+    render(<CreateRoom onRoomCreated={mockOnRoomCreated} />);
+
+    fireEvent.change(screen.getByLabelText(/room name/i), {
+      target: { value: 'Sprint 42' },
+    });
+    fireEvent.change(screen.getByLabelText(/your name/i), {
+      target: { value: 'Alice' },
+    });
+
+    fireEvent.click(screen.getByLabelText(/ordinal/i));
+    fireEvent.click(screen.getByRole('button', { name: /create room/i }));
+
+    await waitFor(() => {
+      expect(mockedApi.createRoom).toHaveBeenCalledWith('Sprint 42', 'Alice', 'ordinal');
       expect(mockOnRoomCreated).toHaveBeenCalledWith('room-123', 'user-456', 'Alice');
     });
   });

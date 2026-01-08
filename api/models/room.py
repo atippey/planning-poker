@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -13,20 +12,29 @@ class RoomState(str, Enum):
     COMPLETE = "complete"
 
 
+class Deck(str, Enum):
+    """Deck type for voting."""
+
+    FIBONACCI = "fibonacci"
+    ORDINAL = "ordinal"
+
+
 VALID_FIBONACCI = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+VALID_ORDINAL = list(range(0, 11))
+VALID_VOTES = set(VALID_FIBONACCI + VALID_ORDINAL)
 
 
 class User(BaseModel):
     """User in a room."""
 
     name: str = Field(..., max_length=50)
-    vote: Optional[int] = None
+    vote: int | None = None
 
     @field_validator("vote")
     @classmethod
-    def validate_vote(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and v not in VALID_FIBONACCI:
-            raise ValueError(f"Vote must be one of {VALID_FIBONACCI}")
+    def validate_vote(cls, v: int | None) -> int | None:
+        if v is not None and v not in VALID_VOTES:
+            raise ValueError(f"Vote must be one of {sorted(VALID_VOTES)}")
         return v
 
 
@@ -41,7 +49,7 @@ class UserWithVote(BaseModel):
     """User with revealed vote for complete state."""
 
     name: str
-    vote: Optional[int]
+    vote: int | None
 
 
 class Room(BaseModel):
@@ -50,6 +58,7 @@ class Room(BaseModel):
     id: UUID
     name: str = Field(..., max_length=100)
     state: RoomState
+    deck: Deck
     created_at: datetime
     users: dict[str, User]
 
@@ -60,6 +69,7 @@ class RoomVotingState(BaseModel):
     id: UUID
     name: str
     state: RoomState
+    deck: Deck
     created_at: datetime
     users: dict[str, UserWithVoteStatus]
 
@@ -70,6 +80,7 @@ class RoomCompleteState(BaseModel):
     id: UUID
     name: str
     state: RoomState
+    deck: Deck
     created_at: datetime
     users: dict[str, UserWithVote]
 
@@ -79,6 +90,7 @@ class CreateRoomRequest(BaseModel):
 
     name: str = Field(..., max_length=100)
     creator_name: str = Field(..., max_length=50)
+    deck: Deck = Deck.FIBONACCI
 
 
 class CreateRoomResponse(BaseModel):
@@ -111,8 +123,8 @@ class VoteRequest(BaseModel):
     @field_validator("vote")
     @classmethod
     def validate_vote(cls, v: int) -> int:
-        if v not in VALID_FIBONACCI:
-            raise ValueError(f"Vote must be one of {VALID_FIBONACCI}")
+        if v not in VALID_VOTES:
+            raise ValueError(f"Vote must be one of {sorted(VALID_VOTES)}")
         return v
 
 

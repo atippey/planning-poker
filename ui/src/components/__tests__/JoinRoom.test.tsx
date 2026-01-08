@@ -49,6 +49,7 @@ describe('JoinRoom', () => {
         name: 'Sprint 42',
         state: 'voting',
         created_at: '2026-01-07T10:00:00Z',
+        deck: 'fibonacci',
         users: {},
       },
     });

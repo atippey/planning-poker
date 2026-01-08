@@ -1,11 +1,9 @@
-import json
-from datetime import datetime
 from uuid import uuid4
 
 import pytest
 from fakeredis import aioredis
 
-from models.room import VALID_FIBONACCI, Room, RoomState, User
+from models.room import VALID_FIBONACCI, VALID_ORDINAL, Deck, RoomState
 from services.room_service import RoomService
 
 
@@ -37,6 +35,7 @@ class TestRoomService:
         assert room.id == room_id
         assert room.name == room_name
         assert room.state == RoomState.VOTING
+        assert room.deck == Deck.FIBONACCI
         assert user_id in room.users
         assert room.users[user_id].name == creator_name
         assert room.users[user_id].has_voted is False
@@ -70,6 +69,7 @@ class TestRoomService:
         room_state = await room_service.get_room(room_id, user2_id)
 
         assert room_state.state == RoomState.VOTING
+        assert room_state.deck == Deck.FIBONACCI
         assert "has_voted" in room_state.users[user1_id].model_dump()
         assert room_state.users[user1_id].has_voted is True
         assert room_state.users[user2_id].has_voted is False
@@ -86,6 +86,7 @@ class TestRoomService:
         room_state = await room_service.get_room(room_id, user1_id)
 
         assert room_state.state == RoomState.COMPLETE
+        assert room_state.deck == Deck.FIBONACCI
         assert room_state.users[user1_id].vote == 5
         assert room_state.users[user2_id].vote == 8
 
@@ -121,7 +122,7 @@ class TestRoomService:
         room_id, user_id, _ = await room_service.create_room("Test Room", "Alice")
 
         await room_service.vote(room_id, user_id, 5)
-        room = await room_service.vote(room_id, user_id, 8)
+        await room_service.vote(room_id, user_id, 8)
 
         full_room = await room_service._get_room_from_redis(room_id)
         assert full_room.users[user_id].vote == 8
@@ -230,3 +231,26 @@ class TestRoomService:
         assert complete_room.users[user1_id].vote == 5
         assert complete_room.users[user2_id].vote == 8
         assert complete_room.users[user3_id].vote == 5
+
+    async def test_vote_with_ordinal_deck(self, room_service):
+        """Test voting with ordinal deck enforces ordinal values."""
+        room_id, user_id, _ = await room_service.create_room("Test Room", "Alice", Deck.ORDINAL)
+
+        room = await room_service.vote(room_id, user_id, 3)
+
+        assert room.deck == Deck.ORDINAL
+        assert room.users[user_id].has_voted is True
+
+        full_room = await room_service._get_room_from_redis(room_id)
+        assert full_room.users[user_id].vote == 3
+
+    async def test_vote_invalid_for_ordinal_deck(self, room_service):
+        """Test ordinal deck rejects fibonacci-only values."""
+        room_id, user_id, _ = await room_service.create_room("Test Room", "Alice", Deck.ORDINAL)
+
+        with pytest.raises(ValueError, match="Invalid vote value"):
+            await room_service.vote(room_id, user_id, max(VALID_FIBONACCI))
+
+        # But accepts max ordinal
+        room = await room_service.vote(room_id, user_id, max(VALID_ORDINAL))
+        assert room.users[user_id].has_voted is True

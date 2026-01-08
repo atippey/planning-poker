@@ -8,9 +8,15 @@ import {
   Alert,
   CircularProgress,
   Box,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import api from '../services/api';
+import { Deck } from '../types/room';
 
 interface CreateRoomProps {
   onRoomCreated: (roomId: string, userId: string, userName: string) => void;
@@ -19,6 +25,7 @@ interface CreateRoomProps {
 export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const [roomName, setRoomName] = useState('');
   const [userName, setUserName] = useState('');
+  const [deck, setDeck] = useState<Deck>('fibonacci');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +35,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     setLoading(true);
 
     try {
-      const response = await api.createRoom(roomName, userName);
+      const response = await api.createRoom(roomName, userName, deck);
       onRoomCreated(response.room_id, response.user_id, userName);
     } catch (err) {
       setError('Failed to create room. Please try again.');
@@ -59,6 +66,18 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
             fullWidth
             inputProps={{ maxLength: 50 }}
           />
+          <FormControl component="fieldset">
+            <FormLabel component="legend">Estimation deck</FormLabel>
+            <RadioGroup
+              row
+              name="deck"
+              value={deck}
+              onChange={(e) => setDeck(e.target.value as Deck)}
+            >
+              <FormControlLabel value="fibonacci" control={<Radio />} label="Fibonacci" />
+              <FormControlLabel value="ordinal" control={<Radio />} label="Ordinal" />
+            </RadioGroup>
+          </FormControl>
           {error && <Alert severity="error">{error}</Alert>}
           <Button
             type="submit"
