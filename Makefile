@@ -1,6 +1,16 @@
-.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint
+.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint ghcr-login ghcr-build ghcr-push ghcr-deploy
 
 .DEFAULT_GOAL := help
+
+# Load .env file if it exists
+-include .env
+export
+
+# GHCR Configuration
+GHCR_REGISTRY ?= ghcr.io
+GHCR_USERNAME ?= $(shell echo $$GHCR_USERNAME)
+GHCR_TOKEN ?= $(shell echo $$GHCR_TOKEN)
+IMAGE_TAG ?= latest
 
 help:
 	@echo "Planning Poker Development Commands"
@@ -29,6 +39,12 @@ help:
 	@echo "  make k3d-delete       Delete k3d cluster"
 	@echo "  make k3d-logs         Show k3d logs (SERVICE=ui|api|redis)"
 	@echo "  make k3d-status       Show k3d cluster status"
+	@echo ""
+	@echo "Production (GHCR):"
+	@echo "  make ghcr-login       Login to GitHub Container Registry"
+	@echo "  make ghcr-build       Build production images"
+	@echo "  make ghcr-push        Push images to GHCR"
+	@echo "  make ghcr-deploy      Deploy to production k8s cluster"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean            Remove generated files and caches"
@@ -113,6 +129,51 @@ k3d-logs:
 
 k3d-status:
 	@./k3d-cluster.sh status
+
+# Production (GHCR)
+ghcr-login:
+	@if [ -z "$(GHCR_USERNAME)" ] || [ -z "$(GHCR_TOKEN)" ]; then \
+		echo "Error: GHCR_USERNAME and GHCR_TOKEN must be set in .env file"; \
+		echo "See .env.example for required configuration"; \
+		exit 1; \
+	fi
+	@echo "Logging in to GitHub Container Registry..."
+	@echo "$(GHCR_TOKEN)" | docker login $(GHCR_REGISTRY) -u $(GHCR_USERNAME) --password-stdin
+	@echo "✓ Logged in to GHCR"
+
+ghcr-build:
+	@echo "Building production images..."
+	@if [ -z "$(GHCR_USERNAME)" ]; then \
+		echo "Error: GHCR_USERNAME must be set in .env file"; \
+		exit 1; \
+	fi
+	cd api && docker build -t $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG) .
+	cd ui && docker build -t $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG) .
+	@echo "✓ Images built"
+
+ghcr-push: ghcr-login ghcr-build
+	@echo "Pushing images to GHCR..."
+	docker push $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)
+	docker push $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)
+	@echo "✓ Images pushed to GHCR"
+	@echo ""
+	@echo "Images:"
+	@echo "  API: $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)"
+	@echo "  UI:  $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)"
+
+ghcr-deploy:
+	@if [ -z "$(GHCR_USERNAME)" ]; then \
+		echo "Error: GHCR_USERNAME must be set in .env file"; \
+		exit 1; \
+	fi
+	@echo "Deploying to production cluster..."
+	helm upgrade --install planning-poker ./helm/planning-poker \
+		--set api.image.repository=$(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api \
+		--set api.image.tag=$(IMAGE_TAG) \
+		--set ui.image.repository=$(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui \
+		--set ui.image.tag=$(IMAGE_TAG) \
+		--wait
+	@echo "✓ Deployed to production"
 
 # Cleanup
 clean:

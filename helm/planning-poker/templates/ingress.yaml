@@ -5,10 +5,15 @@ metadata:
   name: {{ include "planning-poker.fullname" . }}
   labels:
     {{- include "planning-poker.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
+    {{- if .Values.ingress.rateLimit.enabled }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-cors@kubernetescrd,{{ .Release.Namespace }}-rate-limit@kubernetescrd
+    {{- else if .Values.ingress.cors.enabled }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-cors@kubernetescrd
+    {{- end }}
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}

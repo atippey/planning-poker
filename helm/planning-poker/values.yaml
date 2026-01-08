@@ -78,8 +78,9 @@ ui:
 ingress:
   enabled: true
   className: "traefik"
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: default-cors@kubernetescrd
+  annotations: {}
+    # Add custom annotations here if needed
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
     - host: localhost
       paths:
@@ -92,6 +93,24 @@ ingress:
           service: ui
           port: 80
   tls: []
+    # Example for production with cert-manager:
+    # - secretName: planning-poker-tls
+    #   hosts:
+    #     - poker.example.com
+  # CORS configuration
+  cors:
+    enabled: true
+    allowOrigins:
+      - "http://localhost:3000"
+      - "http://localhost"
+    # For production, add your domain:
+    # - "https://poker.example.com"
+  # Rate limiting (disabled by default for local dev)
+  rateLimit:
+    enabled: false
+    average: 100  # requests per period
+    period: "1m"  # 1 minute
+    burst: 50     # allow bursts up to this many requests
 
 serviceAccount:
   create: true

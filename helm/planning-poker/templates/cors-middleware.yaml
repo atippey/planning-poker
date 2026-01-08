@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.cors.enabled -}}
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
@@ -21,8 +22,8 @@ spec:
       - "Authorization"
       - "X-Requested-With"
     accessControlAllowOriginList:
-      - "http://localhost:3000"
-      - "http://localhost"
+      {{- toYaml .Values.ingress.cors.allowOrigins | nindent 6 }}
     accessControlMaxAge: 3600
     addVaryHeader: true
+{{- end }}
 {{- end }}

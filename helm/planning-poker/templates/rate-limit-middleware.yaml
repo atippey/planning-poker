@@ -1,0 +1,16 @@
+{{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.rateLimit.enabled -}}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ .Values.ingress.rateLimit.average }}
+    period: {{ .Values.ingress.rateLimit.period }}
+    burst: {{ .Values.ingress.rateLimit.burst }}
+{{- end }}
+{{- end }}
