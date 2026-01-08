@@ -14,9 +14,12 @@ import type {
 class PlanningPokerApi {
   private client: AxiosInstance;
 
-  constructor(baseURL: string = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000') {
+  constructor(baseURL: string = process.env.REACT_APP_API_BASE_URL || '') {
+    // Use window.location.origin if no base URL specified (works when UI and API are on same host via ingress)
+    // In docker-compose, REACT_APP_API_BASE_URL will be set to http://localhost:8000
+    const apiBase = baseURL || window.location.origin;
     this.client = axios.create({
-      baseURL: `${baseURL}/api/v1`,
+      baseURL: `${apiBase}/api/v1`,
       headers: {
         'Content-Type': 'application/json',
       },

@@ -1,0 +1,28 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "planning-poker.labels" . | nindent 4 }}
+spec:
+  headers:
+    accessControlAllowCredentials: true
+    accessControlAllowMethods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "PATCH"
+      - "OPTIONS"
+    accessControlAllowHeaders:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+    accessControlAllowOriginList:
+      - "http://localhost:3000"
+      - "http://localhost"
+    accessControlMaxAge: 3600
+    addVaryHeader: true
+{{- end }}

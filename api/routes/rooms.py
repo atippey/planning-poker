@@ -21,7 +21,7 @@ from models.room import (
 )
 from services.room_service import RoomService
 
-router = APIRouter(prefix="/api/v1/rooms", tags=["rooms"])
+router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
 @router.post(
