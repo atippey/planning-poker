@@ -1,4 +1,4 @@
-.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint ghcr-login ghcr-build ghcr-push ghcr-deploy
+.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint ghcr-login ghcr-build ghcr-push ghcr-deploy ghcr-chart-push ghcr-release version
 
 .DEFAULT_GOAL := help
 
@@ -10,7 +10,21 @@ export
 GHCR_REGISTRY ?= ghcr.io
 GHCR_USERNAME ?= $(shell echo $$GHCR_USERNAME)
 GHCR_TOKEN ?= $(shell echo $$GHCR_TOKEN)
-IMAGE_TAG ?= latest
+
+# Version detection from git tag
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null)
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+
+# Use git tag as version if available, otherwise use 'latest' for development
+ifdef GIT_TAG
+VERSION := $(GIT_TAG)
+IMAGE_TAG := $(patsubst v%,%,$(GIT_TAG))
+else
+VERSION := dev-$(GIT_COMMIT)
+IMAGE_TAG := latest
+endif
+
+CHART_VERSION := $(patsubst v%,%,$(VERSION))
 
 help:
 	@echo "Planning Poker Development Commands"
@@ -41,9 +55,12 @@ help:
 	@echo "  make k3d-status       Show k3d cluster status"
 	@echo ""
 	@echo "Production (GHCR):"
+	@echo "  make version          Show current version from git tag"
 	@echo "  make ghcr-login       Login to GitHub Container Registry"
 	@echo "  make ghcr-build       Build production images"
-	@echo "  make ghcr-push        Push images to GHCR"
+	@echo "  make ghcr-push        Push images to GHCR (requires git tag)"
+	@echo "  make ghcr-chart-push  Package and push Helm chart to GHCR"
+	@echo "  make ghcr-release     Full release: images + chart (requires git tag)"
 	@echo "  make ghcr-deploy      Deploy to production k8s cluster"
 	@echo ""
 	@echo "Cleanup:"
@@ -131,6 +148,17 @@ k3d-status:
 	@./k3d-cluster.sh status
 
 # Production (GHCR)
+version:
+	@echo "Current version: $(VERSION)"
+	@echo "Image tag: $(IMAGE_TAG)"
+	@echo "Chart version: $(CHART_VERSION)"
+ifdef GIT_TAG
+	@echo "✓ Release build (tagged: $(GIT_TAG))"
+else
+	@echo "⚠ Development build (commit: $(GIT_COMMIT))"
+	@echo "Create a git tag (e.g., v1.0.0) to build a release"
+endif
+
 ghcr-login:
 	@if [ -z "$(GHCR_USERNAME)" ] || [ -z "$(GHCR_TOKEN)" ]; then \
 		echo "Error: GHCR_USERNAME and GHCR_TOKEN must be set in .env file"; \
@@ -142,17 +170,28 @@ ghcr-login:
 	@echo "✓ Logged in to GHCR"
 
 ghcr-build:
-	@echo "Building production images..."
+	@echo "Building production images (version: $(VERSION))..."
 	@if [ -z "$(GHCR_USERNAME)" ]; then \
 		echo "Error: GHCR_USERNAME must be set in .env file"; \
 		exit 1; \
 	fi
 	cd api && docker build -t $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG) .
 	cd ui && docker build -t $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG) .
+ifndef GIT_TAG
+	@echo "⚠ Warning: Building with 'latest' tag (no git tag found)"
+	@echo "Tag your commit with 'git tag v1.0.0' for versioned releases"
+endif
 	@echo "✓ Images built"
 
 ghcr-push: ghcr-login ghcr-build
-	@echo "Pushing images to GHCR..."
+ifndef GIT_TAG
+	@echo "Error: Cannot push without a git tag"
+	@echo "Create and push a tag first:"
+	@echo "  git tag v1.0.0"
+	@echo "  git push origin v1.0.0"
+	@exit 1
+endif
+	@echo "Pushing images to GHCR (version: $(VERSION))..."
 	docker push $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)
 	docker push $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)
 	@echo "✓ Images pushed to GHCR"
@@ -161,13 +200,56 @@ ghcr-push: ghcr-login ghcr-build
 	@echo "  API: $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)"
 	@echo "  UI:  $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)"
 
+ghcr-chart-push: ghcr-login
+ifndef GIT_TAG
+	@echo "Error: Cannot push chart without a git tag"
+	@echo "Create and push a tag first:"
+	@echo "  git tag v1.0.0"
+	@echo "  git push origin v1.0.0"
+	@exit 1
+endif
+	@if [ -z "$(GHCR_USERNAME)" ]; then \
+		echo "Error: GHCR_USERNAME must be set in .env file"; \
+		exit 1; \
+	fi
+	@echo "Packaging Helm chart (version: $(CHART_VERSION))..."
+	@mkdir -p .helm-packages
+	@# Update chart version
+	@sed -i.bak 's/^version:.*/version: $(CHART_VERSION)/' helm/planning-poker/Chart.yaml
+	@sed -i.bak 's/^appVersion:.*/appVersion: "$(IMAGE_TAG)"/' helm/planning-poker/Chart.yaml
+	@rm helm/planning-poker/Chart.yaml.bak
+	helm package helm/planning-poker -d .helm-packages
+	@echo "Pushing chart to GHCR..."
+	helm push .helm-packages/planning-poker-$(CHART_VERSION).tgz oci://$(GHCR_REGISTRY)/$(GHCR_USERNAME)/charts
+	@rm -rf .helm-packages
+	@echo "✓ Chart pushed to GHCR"
+	@echo ""
+	@echo "Chart: oci://$(GHCR_REGISTRY)/$(GHCR_USERNAME)/charts/planning-poker:$(CHART_VERSION)"
+
+ghcr-release: ghcr-push ghcr-chart-push
+	@echo ""
+	@echo "✓ Release $(VERSION) complete!"
+	@echo ""
+	@echo "Images:"
+	@echo "  API: $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)"
+	@echo "  UI:  $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)"
+	@echo ""
+	@echo "Chart:"
+	@echo "  oci://$(GHCR_REGISTRY)/$(GHCR_USERNAME)/charts/planning-poker:$(CHART_VERSION)"
+	@echo ""
+	@echo "Deploy with:"
+	@echo "  helm upgrade --install planning-poker \\"
+	@echo "    oci://$(GHCR_REGISTRY)/$(GHCR_USERNAME)/charts/planning-poker \\"
+	@echo "    --version $(CHART_VERSION)"
+
 ghcr-deploy:
 	@if [ -z "$(GHCR_USERNAME)" ]; then \
 		echo "Error: GHCR_USERNAME must be set in .env file"; \
 		exit 1; \
 	fi
-	@echo "Deploying to production cluster..."
+	@echo "Deploying to production cluster (version: $(VERSION))..."
 	helm upgrade --install planning-poker ./helm/planning-poker \
+		-f helm/planning-poker/values-production.yaml \
 		--set api.image.repository=$(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api \
 		--set api.image.tag=$(IMAGE_TAG) \
 		--set ui.image.repository=$(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui \

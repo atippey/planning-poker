@@ -63,3 +63,7 @@ htmlcov/
 # Misc
 *.bak
 .envrc
+
+# Helm
+.helm-packages/
+*.tgz
