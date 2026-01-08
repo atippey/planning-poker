@@ -67,3 +67,4 @@ htmlcov/
 # Helm
 .helm-packages/
 *.tgz
+.certs
