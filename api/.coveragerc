@@ -1,0 +1,11 @@
+[run]
+omit =
+    tests/*
+    main.py
+    db/*
+    */__pycache__/*
+    */tests/*
+branch = True
+
+[report]
+precision = 2

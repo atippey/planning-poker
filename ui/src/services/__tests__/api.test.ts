@@ -24,15 +24,16 @@ describe('PlanningPokerApi', () => {
         data: {
           room_id: 'room-123',
           user_id: 'user-456',
-          room: {
-            id: 'room-123',
-            name: 'Test Room',
-            state: 'voting' as const,
-            created_at: '2026-01-07T10:00:00Z',
-            users: {},
-          },
+        room: {
+          id: 'room-123',
+          name: 'Test Room',
+          state: 'voting' as const,
+          created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
+          users: {},
         },
-      };
+      },
+    };
 
       mockClient.post.mockResolvedValue(mockResponse);
 
@@ -41,6 +42,7 @@ describe('PlanningPokerApi', () => {
       expect(mockClient.post).toHaveBeenCalledWith('/rooms', {
         name: 'Test Room',
         creator_name: 'Alice',
+        deck: 'fibonacci',
       });
       expect(result).toEqual(mockResponse.data);
     });
@@ -51,14 +53,15 @@ describe('PlanningPokerApi', () => {
       const mockResponse = {
         data: {
           user_id: 'user-789',
-          room: {
-            id: 'room-123',
-            name: 'Test Room',
-            state: 'voting' as const,
-            created_at: '2026-01-07T10:00:00Z',
-            users: {},
-          },
+        room: {
+          id: 'room-123',
+          name: 'Test Room',
+          state: 'voting' as const,
+          created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
+          users: {},
         },
+      },
       };
 
       mockClient.post.mockResolvedValue(mockResponse);
@@ -80,6 +83,7 @@ describe('PlanningPokerApi', () => {
           name: 'Test Room',
           state: 'voting' as const,
           created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
           users: {},
         },
       };
@@ -100,14 +104,15 @@ describe('PlanningPokerApi', () => {
       const mockResponse = {
         data: {
           success: true,
-          room: {
-            id: 'room-123',
-            name: 'Test Room',
-            state: 'voting' as const,
-            created_at: '2026-01-07T10:00:00Z',
-            users: {},
-          },
+        room: {
+          id: 'room-123',
+          name: 'Test Room',
+          state: 'voting' as const,
+          created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
+          users: {},
         },
+      },
       };
 
       mockClient.post.mockResolvedValue(mockResponse);
@@ -127,14 +132,15 @@ describe('PlanningPokerApi', () => {
       const mockResponse = {
         data: {
           success: true,
-          room: {
-            id: 'room-123',
-            name: 'Test Room',
-            state: 'complete' as const,
-            created_at: '2026-01-07T10:00:00Z',
-            users: {},
-          },
+        room: {
+          id: 'room-123',
+          name: 'Test Room',
+          state: 'complete' as const,
+          created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
+          users: {},
         },
+      },
       };
 
       mockClient.post.mockResolvedValue(mockResponse);
@@ -153,14 +159,15 @@ describe('PlanningPokerApi', () => {
       const mockResponse = {
         data: {
           success: true,
-          room: {
-            id: 'room-123',
-            name: 'Test Room',
-            state: 'voting' as const,
-            created_at: '2026-01-07T10:00:00Z',
-            users: {},
-          },
+        room: {
+          id: 'room-123',
+          name: 'Test Room',
+          state: 'voting' as const,
+          created_at: '2026-01-07T10:00:00Z',
+          deck: 'fibonacci' as const,
+          users: {},
         },
+      },
       };
 
       mockClient.post.mockResolvedValue(mockResponse);

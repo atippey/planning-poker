@@ -25,7 +25,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import ShareIcon from '@mui/icons-material/Share';
 import api from '../services/api';
-import { VALID_FIBONACCI, FibonacciValue, RoomStateResponse } from '../types/room';
+import { Deck, VALID_FIBONACCI, VALID_ORDINAL, VoteValue, RoomStateResponse } from '../types/room';
 
 interface VotingRoomProps {
   roomId: string;
@@ -39,7 +39,7 @@ export default function VotingRoom({ roomId, onLeave }: VotingRoomProps) {
   const [userName, setUserName] = useState<string>('');
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [roomState, setRoomState] = useState<RoomStateResponse | null>(null);
-  const [selectedVote, setSelectedVote] = useState<FibonacciValue | null>(null);
+  const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -104,7 +104,7 @@ export default function VotingRoom({ roomId, onLeave }: VotingRoomProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, userId]);
 
-  const handleVote = async (vote: FibonacciValue) => {
+  const handleVote = async (vote: VoteValue) => {
     if (!userId) return;
     setLoading(true);
     try {
@@ -202,7 +202,7 @@ export default function VotingRoom({ roomId, onLeave }: VotingRoomProps) {
 
     const votes = Object.entries(roomState.users)
       .map(([, user]) => user.vote)
-      .filter((v): v is FibonacciValue => v !== null);
+      .filter((v): v is VoteValue => v !== null);
 
     if (votes.length === 0) return null;
 
@@ -216,12 +216,19 @@ export default function VotingRoom({ roomId, onLeave }: VotingRoomProps) {
 
   const stats = calculateStats();
 
+  const voteValuesForDeck = (deck: Deck) => (deck === 'ordinal' ? VALID_ORDINAL : VALID_FIBONACCI);
+
+  const voteValues = voteValuesForDeck(roomState.deck);
+
   return (
     <Box>
       <Paper sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
           <Typography variant="h5" gutterBottom>
             {roomState.name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Deck: {roomState.deck === 'ordinal' ? 'Ordinal (1-10)' : 'Fibonacci'}
           </Typography>
           <Button
             size="small"
@@ -250,7 +257,7 @@ export default function VotingRoom({ roomId, onLeave }: VotingRoomProps) {
               Select Your Estimate
             </Typography>
             <Grid container spacing={1}>
-              {VALID_FIBONACCI.map((value) => (
+              {voteValues.map((value) => (
                 <Grid item key={value}>
                   <Button
                     variant={selectedVote === value ? 'contained' : 'outlined'}

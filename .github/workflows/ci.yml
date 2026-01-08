@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api:
+    name: API Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry==2.2.1
+
+      - name: Install dependencies
+        working-directory: api
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --with dev
+
+      - name: Lint (ruff)
+        working-directory: api
+        run: ruff check .
+
+      - name: Test (pytest)
+        working-directory: api
+        env:
+          COVERAGE_CORE: sysmon
+        run: |
+          mkdir -p reports
+          pytest -v --junitxml=reports/api-junit.xml
+
+      - name: Upload API test report
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-junit
+          path: api/reports/api-junit.xml
+
+  ui:
+    name: UI Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Lint (eslint)
+        working-directory: ui
+        run: npm run lint
+
+      - name: Test (jest)
+        working-directory: ui
+        env:
+          CI: true
+          JEST_JUNIT_OUTPUT_DIR: reports
+          JEST_JUNIT_OUTPUT_NAME: ui-junit.xml
+        run: |
+          mkdir -p reports
+          npm test -- --watchAll=false --runInBand --reporters=default --reporters=jest-junit
+
+      - name: Upload UI test report
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-junit
+          path: ui/reports/ui-junit.xml

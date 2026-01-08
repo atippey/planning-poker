@@ -2,8 +2,8 @@ apiVersion: v2
 name: planning-poker
 description: A Helm chart for Planning Poker application
 type: application
-version: 1.0.1
-appVersion: "1.0.1"
+version: 1.0.3
+appVersion: "1.0.3"
 keywords:
   - planning-poker
   - agile

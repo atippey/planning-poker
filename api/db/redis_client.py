@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -7,8 +6,8 @@ import redis.asyncio as redis
 class RedisClient:
     """Redis client with connection pooling."""
 
-    _instance: Optional["RedisClient"] = None
-    _redis: Optional[redis.Redis] = None
+    _instance: "RedisClient | None" = None
+    _redis: "redis.Redis | None" = None
 
     def __new__(cls) -> "RedisClient":
         if cls._instance is None:

@@ -50,6 +50,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'voting',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', has_voted: false },
         'user-789': { name: 'Bob', has_voted: true },
@@ -73,6 +74,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'voting',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', has_voted: false },
       },
@@ -91,12 +93,38 @@ describe('VotingRoom', () => {
     expect(screen.getByRole('button', { name: '13' })).toBeInTheDocument();
   });
 
+  it('should display ordinal deck options when deck is ordinal', async () => {
+    mockedApi.getRoomState.mockResolvedValue({
+      id: 'room-123',
+      name: 'Sprint Planning',
+      state: 'voting',
+      created_at: '2026-01-07T10:00:00Z',
+      deck: 'ordinal',
+      users: {
+        'user-456': { name: 'Alice', has_voted: false },
+      },
+    });
+
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Deck: Ordinal/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '10' })).toBeInTheDocument();
+    // Fibonacci-only value should not appear
+    expect(screen.queryByRole('button', { name: '13' })).not.toBeInTheDocument();
+  });
+
   it('should calculate and display statistics in complete state', async () => {
     mockedApi.getRoomState.mockResolvedValue({
       id: 'room-123',
       name: 'Sprint Planning',
       state: 'complete',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', vote: 5 },
         'user-789': { name: 'Bob', vote: 8 },
@@ -133,6 +161,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'complete',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', vote: null },
         'user-789': { name: 'Bob', vote: null },
@@ -155,6 +184,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'voting',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', has_voted: false },
       },
@@ -188,6 +218,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'complete',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-1': { name: 'User1', vote: 0 },
         'user-2': { name: 'User2', vote: 1 },
@@ -219,6 +250,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'complete',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', vote: 5 },
         'user-789': { name: 'Bob', vote: 8 },
@@ -237,6 +269,7 @@ describe('VotingRoom', () => {
       name: 'Sprint Planning',
       state: 'voting',
       created_at: '2026-01-07T10:00:00Z',
+      deck: 'fibonacci',
       users: {
         'user-456': { name: 'Alice', has_voted: false },
         'user-789': { name: 'Bob', has_voted: false },
