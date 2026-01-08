@@ -2,6 +2,9 @@
 
 Real-time Planning Poker for agile estimation, built with FastAPI, React, and Redis.
 
+## Homepage
+https://poker.turd.ninja/
+
 ## Architecture
 
 See [design/architecture.md](design/architecture.md) for complete system specification, data models, API spec, and state machine diagrams.

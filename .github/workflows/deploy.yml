@@ -1,0 +1,48 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., 1.0.4)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: prod-release
+    steps:
+      - name: Deploy to production
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          VERSION: ${{ inputs.version }}
+          REGISTRY: ghcr.io
+          IMAGE_PREFIX: ${{ github.repository_owner }}
+        run: |
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
+
+          # Deploy via SSH - run kubectl commands directly on the Pi
+          ssh -i ~/.ssh/id_ed25519 $PROD_HOST << ENDSSH
+            # Update deployment with new image tags
+            kubectl set image deployment/planning-poker-api \
+              planning-poker-api=$REGISTRY/$IMAGE_PREFIX/planning-poker-api:$VERSION
+
+            kubectl set image deployment/planning-poker-ui \
+              planning-poker-ui=$REGISTRY/$IMAGE_PREFIX/planning-poker-ui:$VERSION
+
+            # Wait for rollout
+            kubectl rollout status deployment/planning-poker-api --timeout=5m
+            kubectl rollout status deployment/planning-poker-ui --timeout=5m
+
+            echo "✅ Deployed version $VERSION to production"
+          ENDSSH
