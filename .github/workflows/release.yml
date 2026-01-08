@@ -102,6 +102,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod-release
     steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -114,7 +121,9 @@ jobs:
       - name: Deploy to production
         env:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PROD_USER: ${{ secrets.PROD_USER }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Setup SSH
@@ -123,18 +132,26 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
 
-          # Deploy via SSH - run kubectl commands directly on the Pi
-          ssh -i ~/.ssh/id_ed25519 $PROD_HOST << 'ENDSSH'
-            # Update deployment with new image tags
-            kubectl set image deployment/planning-poker-api \
-              planning-poker-api=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:${{ steps.version.outputs.version }}
+          VERSION="${VERSION#v}"
 
-            kubectl set image deployment/planning-poker-ui \
-              planning-poker-ui=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:${{ steps.version.outputs.version }}
+          # Fail fast if the images aren't published.
+          docker manifest inspect "$REGISTRY/$IMAGE_PREFIX/planning-poker-api:$VERSION" >/dev/null
+          docker manifest inspect "$REGISTRY/$IMAGE_PREFIX/planning-poker-ui:$VERSION" >/dev/null
+
+          # Deploy via SSH - run kubectl commands directly on the Pi
+          ssh -i ~/.ssh/id_ed25519 "${PROD_USER}@${PROD_HOST}" << ENDSSH
+            set -e
+
+            # Update deployment with new image tags
+            kubectl -n "$KUBE_NAMESPACE" set image deployment/planning-poker-api \
+              api=$REGISTRY/$IMAGE_PREFIX/planning-poker-api:$VERSION
+
+            kubectl -n "$KUBE_NAMESPACE" set image deployment/planning-poker-ui \
+              ui=$REGISTRY/$IMAGE_PREFIX/planning-poker-ui:$VERSION
 
             # Wait for rollout
-            kubectl rollout status deployment/planning-poker-api --timeout=5m
-            kubectl rollout status deployment/planning-poker-ui --timeout=5m
+            kubectl -n "$KUBE_NAMESPACE" rollout status deployment/planning-poker-api --timeout=5m
+            kubectl -n "$KUBE_NAMESPACE" rollout status deployment/planning-poker-ui --timeout=5m
 
-            echo "✅ Deployed version ${{ steps.version.outputs.version }} to production"
+            echo "✅ Deployed version $VERSION to production"
           ENDSSH
