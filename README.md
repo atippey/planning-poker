@@ -314,6 +314,13 @@ make k3d-create
 make k3d-deploy
 ```
 
+## Release (GHCR)
+
+- Tag the commit: `git tag v1.0.0 && git push --tags`
+- Validate version info: `make version` (derives version from the git tag)
+- Publish artifacts: `make ghcr-release` (logs in, builds, pushes images, packages chart)
+- `helm/planning-poker/Chart.yaml` is auto-updated from the release tag (sets `version` and `appVersion`) during `ghcr-release` / `ghcr-chart-push`.
+
 ### Common Issues
 
 **Issue**: UI can't connect to API

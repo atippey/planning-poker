@@ -1,4 +1,4 @@
-.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint ghcr-login ghcr-build ghcr-push ghcr-deploy ghcr-chart-push ghcr-release version
+.PHONY: help install test lint clean docker-up docker-down docker-logs k3d-create k3d-deploy k3d-redeploy k3d-delete k3d-logs api-test api-lint ui-test ui-lint ghcr-login ghcr-build ghcr-push ghcr-deploy ghcr-chart-push ghcr-release version update-chart-version
 
 .DEFAULT_GOAL := help
 
@@ -25,6 +25,7 @@ IMAGE_TAG := latest
 endif
 
 CHART_VERSION := $(patsubst v%,%,$(VERSION))
+CHART_FILE := helm/planning-poker/Chart.yaml
 
 help:
 	@echo "Planning Poker Development Commands"
@@ -200,7 +201,20 @@ endif
 	@echo "  API: $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-api:$(IMAGE_TAG)"
 	@echo "  UI:  $(GHCR_REGISTRY)/$(GHCR_USERNAME)/planning-poker-ui:$(IMAGE_TAG)"
 
-ghcr-chart-push: ghcr-login
+update-chart-version:
+ifndef GIT_TAG
+	@echo "Error: Cannot update chart without a git tag"
+	@echo "Create and push a tag first:"
+	@echo "  git tag v1.0.0"
+	@echo "  git push origin v1.0.0"
+	@exit 1
+endif
+	@echo "Updating Helm chart versions from tag $(GIT_TAG)..."
+	@sed -i.bak 's/^version:.*/version: $(CHART_VERSION)/' $(CHART_FILE)
+	@sed -i.bak 's/^appVersion:.*/appVersion: "$(IMAGE_TAG)"/' $(CHART_FILE)
+	@rm $(CHART_FILE).bak
+
+ghcr-chart-push: ghcr-login update-chart-version
 ifndef GIT_TAG
 	@echo "Error: Cannot push chart without a git tag"
 	@echo "Create and push a tag first:"
@@ -214,10 +228,6 @@ endif
 	fi
 	@echo "Packaging Helm chart (version: $(CHART_VERSION))..."
 	@mkdir -p .helm-packages
-	@# Update chart version
-	@sed -i.bak 's/^version:.*/version: $(CHART_VERSION)/' helm/planning-poker/Chart.yaml
-	@sed -i.bak 's/^appVersion:.*/appVersion: "$(IMAGE_TAG)"/' helm/planning-poker/Chart.yaml
-	@rm helm/planning-poker/Chart.yaml.bak
 	helm package helm/planning-poker -d .helm-packages
 	@echo "Pushing chart to GHCR..."
 	helm push .helm-packages/planning-poker-$(CHART_VERSION).tgz oci://$(GHCR_REGISTRY)/$(GHCR_USERNAME)/charts
