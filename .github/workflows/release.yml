@@ -50,6 +50,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./api
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:${{ steps.version.outputs.version }}
@@ -61,6 +62,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./ui
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:${{ steps.version.outputs.version }}
