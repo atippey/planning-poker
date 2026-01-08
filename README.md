@@ -4,6 +4,8 @@ Real-time Planning Poker for agile estimation, built with FastAPI, React, and Re
 
 Demo: <a href="https://poker.turd.ninja" target="_blank" rel="noreferrer">poker.turd.ninja</a>
 
+This repo serves as a demonstration of how to manage context for working with AI agents using `CLAUDE.md` and the `design/` docs.
+
 ## Architecture
 
 See [design/architecture.md](design/architecture.md) for complete system specification, data models, API spec, and state machine diagrams.
