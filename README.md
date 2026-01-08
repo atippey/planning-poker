@@ -8,7 +8,7 @@ See [design/architecture.md](design/architecture.md) for complete system specifi
 
 ## Tech Stack
 
-- **API**: FastAPI (Python 3.11+), Redis for session state
+- **API**: FastAPI (Python 3.12+), Redis for session state, Poetry for dependency management
 - **UI**: React 18 + TypeScript, Material-UI v5, React Router v6
 - **Deployment**: Kubernetes (k3d for local dev), Helm charts, Traefik ingress
 
@@ -97,18 +97,17 @@ make clean             # Remove generated files and caches
 ```bash
 cd api
 
-# Install dependencies (use conda env 'poker')
-conda activate poker
-pip install -r requirements.txt
+# Install dependencies with Poetry
+poetry install --with dev
 
 # Run tests
-pytest -v
+poetry run pytest -v
 
 # Run linting
-ruff check .
+poetry run ruff check .
 
 # Start API (requires Redis running)
-uvicorn main:app --reload
+poetry run uvicorn main:app --reload
 ```
 
 ### UI
@@ -132,9 +131,11 @@ npm start
 ## Testing
 
 ### API Tests
-- **Service Layer**: 95% coverage with fakeredis (19 tests)
+- **Coverage**: 86% with Python 3.12's sys.monitoring-based coverage tracking
+- **Service Layer**: Comprehensive testing with fakeredis (21 tests)
+- **Routes Layer**: FastAPI endpoint testing with AsyncClient (3 tests)
 - **Models**: Pydantic validation with comprehensive error handling
-- **Run**: `make api-test` or `pytest tests/test_service.py -v`
+- **Run**: `make api-test` or `poetry run pytest -v`
 
 ### UI Tests
 - **Components**: Routing, forms, error handling, state management (24 tests)
@@ -249,11 +250,12 @@ See [API documentation](http://localhost:8000/docs) when running locally.
 
 ## Development Standards
 
-- **Python**: TDD required, 80%+ coverage, ruff linting
+- **Python**: TDD required, 80%+ coverage, ruff linting, Poetry for dependency management
 - **TypeScript**: Strict mode, ESLint + Prettier, Jest tests
 - **Language**: All code, comments, and documentation in English
 - **Testing**: Unit tests for service layer and UI components
 - **State Management**: Redis for backend, localStorage for UI session
+- **Dependencies**: Poetry for Python (separate prod/dev deps), npm for UI
 
 ## Configuration
 

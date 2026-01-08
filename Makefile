@@ -70,7 +70,7 @@ help:
 # Setup
 install:
 	@echo "Installing API dependencies..."
-	cd api && pip install -r requirements.txt
+	cd api && poetry install --with dev
 	@echo ""
 	@echo "Installing UI dependencies..."
 	cd ui && npm install --legacy-peer-deps

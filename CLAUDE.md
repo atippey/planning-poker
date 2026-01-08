@@ -8,7 +8,7 @@
 See design/architecture.md for Mermaid diagram of system design.
 
 ## Stack
-- **API**: FastAPI (Python 3.11+), Redis for session state
+- **API**: FastAPI (Python 3.12+), Redis for session state, Poetry for dependency management
 - **UI**: React 18 + TypeScript, Material-UI v5, nginx for serving
 - **Deployment**: Kubernetes (containerized, k3d for local dev)
 
@@ -19,10 +19,12 @@ See design/architecture.md for Mermaid diagram of system design.
 ## Development Standards
 
 ### Python (api/)
+- **Dependency Management**: Use Poetry (pyproject.toml) with separate main and dev dependency groups
 - **TDD required**: Write tests first, pytest for all endpoints
-- **Linting**: ruff (or black + isort + flake8)
+- **Linting**: ruff
 - **Structure**: Follow FastAPI best practices, separate routes/models/services
-- **Testing**: 80%+ coverage, mock Redis/external deps
+- **Testing**: 80%+ coverage, mock Redis/external deps with fakeredis
+- **Coverage**: Use Python 3.12's sys.monitoring (COVERAGE_CORE=sysmon) for accurate async tracking
 - **All code comments and docstrings in English**
 
 ### TypeScript (ui/)
@@ -48,13 +50,16 @@ See design/architecture.md for Mermaid diagram of system design.
 
 ## Project Checklist
 Before writing logic, ensure these exist:
-- [ ] api/requirements.txt (fastapi, redis, pytest, fakeredis, ruff)
-- [ ] api/Dockerfile
+- [ ] api/pyproject.toml (Poetry config with main and dev groups)
+- [ ] api/poetry.lock (managed by Poetry)
+- [ ] api/Dockerfile (uses Poetry for production deps only)
 - [ ] ui/package.json (react, typescript, material-ui, jest)
+- [ ] ui/package-lock.json (managed by npm)
 - [ ] ui/tsconfig.json
-- [ ] ui/Dockerfile  
+- [ ] ui/Dockerfile
 - [ ] docker-compose.yml (for local Redis)
 - [ ] .gitignore
+- [ ] .github/workflows/ci.yml (CI with Python 3.12, Poetry, coverage tracking)
 
 ## Goals
 Build a real-time planning poker app that runs on Kubernetes. Keep it simple enough to demo in a few hours - skip auth, use room codes. Polling over WebSockets if simpler.

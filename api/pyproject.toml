@@ -1,6 +1,32 @@
+[tool.poetry]
+name = "planning-poker-api"
+version = "1.0.0"
+description = "Planning Poker API"
+authors = ["Planning Poker Team"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "0.109.0"
+uvicorn = {extras = ["standard"], version = "0.27.0"}
+redis = "5.0.1"
+pydantic = "2.5.3"
+pydantic-settings = "2.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "7.4.4"
+pytest-asyncio = "0.23.3"
+pytest-cov = "4.1.0"
+coverage = {extras = ["toml"], version = "7.4.0"}
+fakeredis = "2.21.0"
+testcontainers = "4.8.2"
+httpx = "0.26.0"
+ruff = "0.1.13"
+
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "C4", "UP"]
@@ -8,3 +34,7 @@ ignore = []
 
 [tool.ruff.lint.isort]
 known-first-party = ["models", "routes", "services", "db"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
