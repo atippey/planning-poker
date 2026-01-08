@@ -17,6 +17,7 @@ jobs:
   release:
     name: Build and Push Images
     runs-on: ubuntu-latest
+    environment: prod-release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +37,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Extract version from tag
         id: version
@@ -83,7 +84,7 @@ jobs:
           helm package helm/planning-poker -d .helm-packages
 
           # Push to GHCR
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GHCR_PAT }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
           helm push .helm-packages/planning-poker-$VERSION.tgz oci://${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/charts
 
           echo "✅ Released version $VERSION"
