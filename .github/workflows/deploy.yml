@@ -22,6 +22,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           PROD_USER: ${{ secrets.PROD_USER }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
           VERSION: ${{ inputs.version }}
           REGISTRY: ghcr.io
           IMAGE_PREFIX: ${{ github.repository_owner }}
@@ -34,16 +35,18 @@ jobs:
 
           # Deploy via SSH - run kubectl commands directly on the Pi
           ssh -i ~/.ssh/id_ed25519 "${PROD_USER}@${PROD_HOST}" << 'ENDSSH'
+            set -e
+
             # Update deployment with new image tags
-            kubectl set image deployment/planning-poker-api \
+            kubectl -n "$KUBE_NAMESPACE" set image deployment/planning-poker-api \
               planning-poker-api=$REGISTRY/$IMAGE_PREFIX/planning-poker-api:$VERSION
 
-            kubectl set image deployment/planning-poker-ui \
+            kubectl -n "$KUBE_NAMESPACE" set image deployment/planning-poker-ui \
               planning-poker-ui=$REGISTRY/$IMAGE_PREFIX/planning-poker-ui:$VERSION
 
             # Wait for rollout
-            kubectl rollout status deployment/planning-poker-api --timeout=5m
-            kubectl rollout status deployment/planning-poker-ui --timeout=5m
+            kubectl -n "$KUBE_NAMESPACE" rollout status deployment/planning-poker-api --timeout=5m
+            kubectl -n "$KUBE_NAMESPACE" rollout status deployment/planning-poker-ui --timeout=5m
 
             echo "✅ Deployed version $VERSION to production"
           ENDSSH
