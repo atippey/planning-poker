@@ -20,6 +20,7 @@ jobs:
       - name: Deploy to production
         env:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PROD_USER: ${{ secrets.PROD_USER }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
           VERSION: ${{ inputs.version }}
           REGISTRY: ghcr.io
@@ -32,7 +33,7 @@ jobs:
           ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
 
           # Deploy via SSH - run kubectl commands directly on the Pi
-          ssh -i ~/.ssh/id_ed25519 $PROD_USER\@$PROD_HOST << ENDSSH
+          ssh -i ~/.ssh/id_ed25519 "${PROD_USER}@${PROD_HOST}" << 'ENDSSH'
             # Update deployment with new image tags
             kubectl set image deployment/planning-poker-api \
               planning-poker-api=$REGISTRY/$IMAGE_PREFIX/planning-poker-api:$VERSION
