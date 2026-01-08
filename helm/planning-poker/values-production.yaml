@@ -1,0 +1,106 @@
+# Production Values for Raspberry Pi Deployment
+# Usage: helm upgrade --install planning-poker ./helm/planning-poker -f values-production.yaml
+
+# Reduce replicas for Pi (less resources)
+replicaCount: 1
+
+redis:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+api:
+  replicaCount: 1  # Single replica for Pi
+  resources:
+    limits:
+      cpu: 300m      # Reduced for Pi
+      memory: 256Mi  # Reduced for Pi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+ui:
+  replicaCount: 1  # Single replica for Pi
+  resources:
+    limits:
+      cpu: 100m      # Reduced for Pi
+      memory: 128Mi  # Reduced for Pi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations: {}
+    # If using cert-manager for Let's Encrypt:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+  hosts:
+    - host: poker.turd.ninja
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 8000
+        - path: /
+          pathType: Prefix
+          service: ui
+          port: 80
+
+  # TLS Configuration
+  # Using existing certificate from AWS ACM/Route53
+  tls:
+    - secretName: planning-poker-tls
+      hosts:
+        - poker.turd.ninja
+
+  # CORS Configuration
+  cors:
+    enabled: true
+    allowOrigins:
+      - "https://poker.turd.ninja"
+      # Add work/home IPs later if needed for additional security
+
+  # Rate Limiting (enabled for production)
+  rateLimit:
+    enabled: true
+    average: 100   # 100 requests per period
+    period: "1m"   # 1 minute
+    burst: 50      # Allow bursts up to 50 requests
+    # Adjust these based on your expected traffic
+
+# Service account (no changes needed)
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Security contexts (good practice for production)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # Redis needs to write
+  capabilities:
+    drop:
+      - ALL
+
+# Node selector for Pi (optional, if you label your Pi nodes)
+# nodeSelector:
+#   kubernetes.io/hostname: your-pi-hostname
+
+# Tolerations (if needed)
+tolerations: []
+
+# Affinity (if needed)
+affinity: {}
