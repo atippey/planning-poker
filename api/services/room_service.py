@@ -20,7 +20,7 @@ from models.room import (
 class RoomService:
     """Service for managing planning poker rooms."""
 
-    ROOM_TTL = 86400
+    ROOM_TTL = 172800  # 48 hours in seconds
 
     def __init__(self, redis_client: redis.Redis):
         """Initialize room service with Redis client."""

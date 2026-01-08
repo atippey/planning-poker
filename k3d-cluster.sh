@@ -79,6 +79,21 @@ function deploy() {
     echo "  API: http://localhost:8080"
 }
 
+function redeploy() {
+    echo "Rebuilding and redeploying Planning Poker..."
+    build_and_push
+    echo ""
+    echo "Restarting deployments to pick up new images..."
+    kubectl rollout restart deployment/planning-poker-api
+    kubectl rollout restart deployment/planning-poker-ui
+    echo ""
+    echo "Waiting for rollouts to complete..."
+    kubectl rollout status deployment/planning-poker-api
+    kubectl rollout status deployment/planning-poker-ui
+    echo ""
+    echo "Redeploy complete!"
+}
+
 function logs() {
     SERVICE=${1:-ui}
     echo "Showing logs for ${SERVICE}..."
@@ -98,6 +113,7 @@ function help() {
     echo "  status        Show cluster status"
     echo "  build         Build and push images to local registry"
     echo "  deploy        Deploy application with Helm"
+    echo "  redeploy      Rebuild images and restart deployments"
     echo "  logs [svc]    Show logs (api, ui, redis)"
     echo "  help          Show this help message"
     echo ""
@@ -106,6 +122,9 @@ function help() {
     echo "  ./k3d-cluster.sh build"
     echo "  ./k3d-cluster.sh deploy"
     echo "  ./k3d-cluster.sh logs ui"
+    echo ""
+    echo "Quick redeploy after code changes:"
+    echo "  ./k3d-cluster.sh redeploy"
 }
 
 # Main script
@@ -130,6 +149,9 @@ case "${1:-help}" in
         ;;
     deploy)
         deploy
+        ;;
+    redeploy)
+        redeploy
         ;;
     logs)
         logs ${2:-ui}

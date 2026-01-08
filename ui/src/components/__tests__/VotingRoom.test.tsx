@@ -1,15 +1,29 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import VotingRoom from '../VotingRoom';
 import api from '../../services/api';
 
 jest.mock('../../services/api');
 const mockedApi = api as jest.Mocked<typeof api>;
 
+const renderWithRouter = (roomId: string, onLeave: jest.Mock, locationState?: { userId: string; userName: string }) => {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: `/room/${roomId}`, state: locationState }]}>
+      <Routes>
+        <Route path="/room/:roomId" element={<VotingRoom roomId={roomId} onLeave={onLeave} />} />
+      </Routes>
+    </MemoryRouter>
+  );
+};
+
 describe('VotingRoom', () => {
   const defaultProps = {
     roomId: 'room-123',
-    userId: 'user-456',
     onLeave: jest.fn(),
+  };
+  const defaultLocationState = {
+    userId: 'user-456',
+    userName: 'Alice',
   };
 
   beforeEach(() => {
@@ -25,7 +39,7 @@ describe('VotingRoom', () => {
   it('should render loading state initially', () => {
     mockedApi.getRoomState.mockImplementation(() => new Promise(() => {}));
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -42,7 +56,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Sprint Planning')).toBeInTheDocument();
@@ -64,7 +78,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Select Your Estimate')).toBeInTheDocument();
@@ -90,7 +104,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Results')).toBeInTheDocument();
@@ -109,8 +123,8 @@ describe('VotingRoom', () => {
     // Min: 5
     expect(screen.getAllByText('5').length).toBeGreaterThan(0);
 
-    // Max: 8
-    expect(screen.getByText('8')).toBeInTheDocument();
+    // Max: 8 (appears in vote display and statistics)
+    expect(screen.getAllByText('8').length).toBeGreaterThan(0);
   });
 
   it('should handle empty votes in complete state', async () => {
@@ -125,7 +139,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Results')).toBeInTheDocument();
@@ -146,7 +160,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(mockedApi.getRoomState).toHaveBeenCalledTimes(1);
@@ -181,7 +195,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Results')).toBeInTheDocument();
@@ -192,11 +206,10 @@ describe('VotingRoom', () => {
       expect(screen.getByText('30.0')).toBeInTheDocument();
     });
 
-    // Min: 0
+    // Min and Max: Check statistics are displayed (values appear multiple times in vote display)
+    expect(screen.getByText('Statistics')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
-
-    // Max: 89
-    expect(screen.getByText('89')).toBeInTheDocument();
+    expect(screen.getAllByText('89').length).toBeGreaterThan(0);
   });
 
   it('should clear selected vote when room resets from complete to voting', async () => {
@@ -212,7 +225,7 @@ describe('VotingRoom', () => {
       },
     });
 
-    const { rerender } = render(<VotingRoom {...defaultProps} />);
+    renderWithRouter(defaultProps.roomId, defaultProps.onLeave, defaultLocationState);
 
     await waitFor(() => {
       expect(screen.getByText('Results')).toBeInTheDocument();

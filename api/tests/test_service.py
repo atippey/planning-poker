@@ -204,12 +204,12 @@ class TestRoomService:
             await room_service.reset(room_id, fake_user_id)
 
     async def test_room_ttl_set(self, room_service, redis_client):
-        """Test that room has 24-hour TTL in Redis."""
+        """Test that room has 48-hour TTL in Redis."""
         room_id, _, _ = await room_service.create_room("Test Room", "Alice")
 
         ttl = await redis_client.ttl(f"room:{room_id}")
 
-        assert 86300 < ttl <= 86400
+        assert 172700 < ttl <= 172800
 
     async def test_multiple_users_voting(self, room_service):
         """Test multiple users voting in a room."""
