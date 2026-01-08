@@ -1,0 +1,22 @@
+# Planning Poker - AI Agent Configuration
+# Specification: https://github.com/Anthropic/llm-router
+
+# Application Info
+This is a Planning Poker application for agile estimation.
+Real-time collaboration tool for development teams.
+
+# Crawling Permissions
+Allow: *
+
+# Terms of Service
+By accessing this site, you agree to:
+- Use the application for legitimate planning poker sessions only
+- Not abuse rate limits or attempt to overwhelm the service
+- Respect other users' privacy and session data
+
+# Contact
+For questions or issues: https://github.com/your-username/planning-poker/issues
+
+# Technical Details
+Stack: React, TypeScript, FastAPI, Redis
+License: Demo/Educational purposes
