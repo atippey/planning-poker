@@ -2,8 +2,7 @@
 
 Real-time Planning Poker for agile estimation, built with FastAPI, React, and Redis.
 
-## Homepage
-https://poker.turd.ninja/
+Demo: <a href="https://poker.turd.ninja" target="_blank" rel="noreferrer">poker.turd.ninja</a>
 
 ## Architecture
 
@@ -347,4 +346,8 @@ make k3d-deploy
 
 ## License
 
-Built for demonstration purposes.
+MIT License. See `LICENSE`.
+
+## Terminology
+
+"Planning Poker" is a commonly used term in agile estimation.

@@ -64,6 +64,27 @@ function App() {
             <Route path="/room/:roomId" element={<RoomPage />} />
           </Routes>
         </Container>
+
+        <Box component="footer" sx={{ py: 2 }}>
+          <Container maxWidth="lg">
+            <Typography variant="body2" color="text.secondary" align="center">
+              © 2025 atippey. MIT License.{' '}
+              <Box
+                component="a"
+                href="https://github.com/atippey/planning-poker"
+                target="_blank"
+                rel="noreferrer"
+                sx={{
+                  color: 'primary.main',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '3px',
+                }}
+              >
+                GitHub
+              </Box>
+            </Typography>
+          </Container>
+        </Box>
       </Box>
     </BrowserRouter>
   );
