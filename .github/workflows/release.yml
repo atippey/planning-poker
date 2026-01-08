@@ -10,12 +10,12 @@ permissions:
   packages: write
 
 env:
-  GHCR_USERNAME: ${{ secrets.GHCR_USERNAME || github.actor }}
-  GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}
 
 jobs:
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    name: Build and Push Images
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,21 +28,113 @@ jobs:
           git fetch origin main:refs/remotes/origin/main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push UI image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ui
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
-      - name: Log in to GHCR
+      - name: Package and push Helm chart
         env:
-          CR_PAT: ${{ env.GHCR_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if [ -z "$CR_PAT" ]; then
-            echo "GHCR_TOKEN secret is required" >&2
-            exit 1
-          fi
-          echo "$CR_PAT" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          # Update chart version
+          sed -i "s/^version:.*/version: $VERSION/" helm/planning-poker/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"$VERSION\"/" helm/planning-poker/Chart.yaml
 
-      - name: Build and release (images + chart)
+          # Package chart
+          mkdir -p .helm-packages
+          helm package helm/planning-poker -d .helm-packages
+
+          # Push to GHCR
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
+          helm push .helm-packages/planning-poker-$VERSION.tgz oci://${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/charts
+
+          echo "✅ Released version $VERSION"
+          echo "Images:"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:$VERSION"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:$VERSION"
+          echo "Chart:"
+          echo "  - oci://${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/charts/planning-poker:$VERSION"
+
+  deploy:
+    name: Deploy to Production
+    needs: release
+    runs-on: ubuntu-latest
+    environment: prod-release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Deploy to production
         env:
-          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ env.GHCR_TOKEN }}
-        run: make ghcr-release
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
+
+          # Copy kubeconfig from production server
+          scp -i ~/.ssh/id_ed25519 $PROD_HOST:~/.kube/config ~/.kube/config
+
+          # Update deployment with new image tags
+          kubectl set image deployment/planning-poker-api \
+            planning-poker-api=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-api:$VERSION
+
+          kubectl set image deployment/planning-poker-ui \
+            planning-poker-ui=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/planning-poker-ui:$VERSION
+
+          # Wait for rollout
+          kubectl rollout status deployment/planning-poker-api --timeout=5m
+          kubectl rollout status deployment/planning-poker-ui --timeout=5m
+
+          echo "✅ Deployed version $VERSION to production"
